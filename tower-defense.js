@@ -1,6 +1,6 @@
 'use strict';
 
-let colors = {
+const colors = {
   background:    '#d8d89a',
   boardbg1:      '#8bc34a',
   boardbg2:      '#d6af5c',
@@ -102,6 +102,16 @@ class Game {
     this.defenderAI       = defenderAI || (game => null);
     this.defenderGold     = DEFENDER_INITIAL_GOLD;
     this.defenderLife     = DEFENDER_INITIAL_LIFE;
+
+    this.canvas = document.getElementById('viewport');
+    this.canvasContext = this.canvas.getContext('2d');
+    this.hudElements = {
+      turnNumber:    document.getElementById('turn-number'),
+      invaderGold:   document.getElementById('invader-gold'),
+      invaderIncome: document.getElementById('invader-income'),
+      defenderGold:  document.getElementById('defender-gold'),
+      defenderLife:  document.getElementById('defender-life'),
+    }
   }
 
   spawnInvader({hp, defense, stunRes, ..._}) {
@@ -271,23 +281,49 @@ class Game {
   }
 
   draw() {
-    let canvas = document.getElementById('viewport');
-    let ctx = canvas.getContext('2d');
+    let ctx = this.canvasContext;
+
+    let yCenter = this.canvas.height / 2;
+    let spaceSize = 12;
+    let halfSpace = spaceSize / 2;
+    let leftEdge = 40;
+    let barWidth = spaceSize / 3;
+    let hpBarHeight = 40;
+    let pieceRadius = 4;
+    let heightPerStun = 4;
+    let heightPerCooldown = 4;
+    let barPadding = 2;
+    let pieceXCenterBase = leftEdge + halfSpace;
 
     ctx.fillStyle = colors.background;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     ctx.fillStyle = colors.boardbg1;
     for (let i = 0; i < 10; i += 2) {
-      ctx.fillRect(40 + 120 * i, 120, 120, 12);
+      ctx.fillRect(
+        leftEdge + 10 * spaceSize * i,
+        yCenter - spaceSize,
+        10 * spaceSize,
+        spaceSize
+      );
     }
     ctx.fillStyle = colors.boardbg2;
     for (let i = 1; i < 10; i += 2) {
-      ctx.fillRect(40 + 120 * i, 120, 120, 12);
+      ctx.fillRect(
+        leftEdge + 10 * spaceSize * i,
+        yCenter - spaceSize,
+        10 * spaceSize,
+        spaceSize
+      );
     }
     ctx.strokeStyle = colors.boardlines;
     for (let i = 0; i < 100; i ++) {
-      ctx.strokeRect(40 + 12 * i, 120, 12, 12)
+      ctx.strokeRect(
+        leftEdge + spaceSize * i,
+        yCenter - spaceSize,
+        spaceSize,
+        spaceSize
+      )
     }
 
     for (let i = 0; i < 100; i ++) {
@@ -295,16 +331,36 @@ class Game {
       if (invader) {
         ctx.fillStyle = colors.invader;
         ctx.beginPath();
-        ctx.arc(46 + 12 * i, 126, 4, 0, 2*Math.PI);
+        ctx.arc(
+          pieceXCenterBase + spaceSize * i,
+          yCenter - halfSpace,
+          pieceRadius,
+          0, 2*Math.PI
+        );
         ctx.closePath();
         ctx.fill();
         ctx.fillStyle = colors.invaderdmg;
-        ctx.fillRect(42 + 12 * i, 96, 4, 20);
+        ctx.fillRect(
+          pieceXCenterBase - barWidth + spaceSize * i,
+          yCenter - spaceSize - barPadding - hpBarHeight,
+          barWidth,
+          hpBarHeight
+        );
         ctx.fillStyle = colors.invaderhp;
-        let pixhp = 20 * (invader.hp / invader.maxhp);
-        ctx.fillRect(42 + 12 * i, 116 - pixhp, 4, pixhp);
+        let pixhp = hpBarHeight * (invader.hp / invader.maxhp);
+        ctx.fillRect(
+          pieceXCenterBase - barWidth + spaceSize * i,
+          yCenter - spaceSize - barPadding - pixhp,
+          barWidth,
+          pixhp
+        );
         ctx.fillStyle = colors.invaderstun;
-        ctx.fillRect(46 + 12 * i, 116 - invader.stunTime * 4, 4, invader.stunTime * 4);
+        ctx.fillRect(
+          pieceXCenterBase + spaceSize * i,
+          yCenter - spaceSize - barPadding - invader.stunTime * heightPerStun,
+          barWidth,
+          invader.stunTime * heightPerStun
+        );
       }
     }
 
@@ -313,24 +369,78 @@ class Game {
       if (tower) {
         ctx.fillStyle = colors[this.towerSlots[i].type]
         ctx.beginPath();
-        ctx.arc(46 + 12 * i, 138, 4, 0, 2*Math.PI);
+        ctx.arc(
+          pieceXCenterBase + spaceSize * i,
+          yCenter + halfSpace,
+          pieceRadius,
+          0, 2*Math.PI
+        );
         ctx.closePath();
         ctx.fill();
         ctx.fillStyle = colors.towercooldown;
-        ctx.fillRect(44 + 12 * i, 148, 4, tower.cooldown * 2);
+        ctx.fillRect(
+          pieceXCenterBase - barWidth / 2 + spaceSize * i,
+          yCenter + spaceSize + barPadding,
+          barWidth,
+          tower.cooldown * heightPerCooldown
+        );
       }
     }
 
-    ctx.fillStyle = colors.text;
-    ctx.font = "32px sans-serif";
-    ctx.fillText(`Turn ${this.turnNumber}`, 20, 50);
-    ctx.fillText(`Invader Gold: ${this.invaderGold}`, 20, 300);
-    ctx.fillText(`Invader Income: ${this.invaderIncome}`, 20, 350);
-    ctx.fillText(`Defender Gold ${this.defenderGold}`, 660, 300);
-    ctx.fillText(`Defender Life ${this.defenderLife}`, 660, 350);
+    this.hudElements.turnNumber.innerText    = this.turnNumber;
+    this.hudElements.invaderGold.innerText   = this.invaderGold;
+    this.hudElements.invaderIncome.innerText = this.invaderIncome;
+    this.hudElements.defenderGold.innerText  = this.defenderGold;
+    this.hudElements.defenderLife.innerText  = this.defenderLife;
   }
 
   run() {
+    let game = this;
+
+    let delay = document.getElementById('turn-delay');
+    let pause = document.getElementById('pause-btn');
+    let step = document.getElementById('step-btn');
+
+    // Scoping rules with callbacks are weird...
+    let runState = {
+      turnTimeout: null,
+      running:     false,
+    };
+
+    function turn() {
+      if (runState.running) {
+        runState.turnTimeout = window.setTimeout(turn, parseInt(delay.value));
+      }
+      runState.running = game.takeTurn();
+      window.requestAnimationFrame(() => game.draw());
+    }
+
+    function resumeAction() {
+      runState.running = true;
+      pause.onclick = pauseAction;
+      pause.value = 'Stop';
+      turn();
+    }
+
+    function pauseAction() {
+      if (runState.turnTimeout) {
+        window.clearTimeout(runState.turnTimeout)
+      }
+      runState.running = false;
+      pause.onclick = resumeAction;
+      pause.value = 'Start';
+    }
+
+    function stepAction() {
+      pauseAction();
+      game.takeTurn();
+      window.requestAnimationFrame(() => game.draw());
+    }
+
+    pauseAction();
+    step.onclick = stepAction;
+
+    window.requestAnimationFrame(() => game.draw());
   }
 }
 
@@ -359,14 +469,9 @@ function simpleTurretBuilder() {
   }
 }
 
-
 function newGame() {
   let game = new Game(null, simpleTurretBuilder());
-  let doTurn = function() {
-    if (game.takeTurn()) {
-      window.setTimeout(doTurn, 100);
-    }
-    game.draw();
-  }
-  doTurn();
+  game.run()
 }
+
+document.addEventListener('DOMContentLoaded', newGame, false);

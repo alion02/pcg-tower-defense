@@ -8,8 +8,37 @@
 <body>
   <div id="game">
     <h1>Tower Defense King of the Hill</h1>
-    <canvas id="viewport" height=720 width=1280 />
-  </div>
+    <table id="controls">
+      <tr>
+        <th>Turn</th>
+        <td id="turn-number" class="number" >0</td>
+        <td></td>
+        <th>Turn Delay</th>
+        <td><input id="turn-delay" type="number" value="100" min="0" max="1000" step="10" /> ms</td>
+        <td></td>
+        <td><input id="pause-btn" type="button" value="Pause"/></td>
+        <td><input id="step-btn" type="button" value="Step"/></td>
+      </tr>
+    </table>
+    <div>
+      <canvas id="viewport" height=240 width=1280 />
+    </div>
+    <table id="hud">
+      <tr>
+        <th style="width: 25%">Invader Gold</th>
+        <td style="width: 15%" id="invader-gold" class="number">0</td>
+        <th style="width: 25%">Defender Gold</th>
+        <td style="width: 15%" id="defender-gold" class="number">50</td>
+        <td style="width: 100%" rowspan="2">Stats go here.</td>
+      </tr>
+      <tr>
+        <th>Invader Income</th>
+        <td id="invader-income" class="number">10</td>
+        <th>Defender Life</th>
+        <td id="defender-life" class="number">10</td>
+      </tr>
+    </table>
+  </>
   <script>newGame({});</script>
 </body>
 </html>
