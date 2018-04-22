@@ -1,29 +1,19 @@
 
-
 html {
   font-family: "Lucida Sans Unicode", "Lucida Grande", sans-serif;
 }
 
-#game {
-  align-content: center;
+h1 {
+  text-align: center;
 }
 
-#viewport {
-  display: block;
-  padding-left: 0;
-  padding-right: 0;
-  margin-left: auto;
-  margin-right: auto;
-  border: 1px solid black;
-}
-
-table {
+.hud {
   border: 1px solid black;
   display: block;
   margin-left: auto;
   margin-right: auto;
   width: 1280px;
-  font-size: 32px;
+  font-size: 20px;
 }
 
 th, td {
@@ -41,31 +31,76 @@ th {
   text-align: left;
 }
 
+input {
+  vertical-align: middle;
+  height: 24px;
+}
+
+input[type="number"] {
+  font-size: 20px;
+}
+
 .number {
   text-align: right;
   font-family: "Lucida Console", monospace;
 }
 
-input {
-  vertical-align: middle;
-  height: 32px;
+.header {
+  font-weight: bold;
 }
 
-input[type="number"] {
-  font-size: 32px;
-  font-family: "Lucida Console", monospace;
+.spacer {
+  flex-grow: 1;
 }
 
-input[type="button"] {
-  font-size: 28px;
-  display: inline-flex;
+.stat-column {
+  width: 160px;
+}
+
+.placeholder {
+  color: gray;
+  font-style: italic;
+}
+
+#controls {
+  width: 1280px;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+}
+
+#controls > * {
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+#controls input[type="button"] {
+  font-size: 16px;
+  align-items: center;
+  margin-right: 5px;
+  flex-basis: 60px;
+}
+
+#hud {
+  width: 1280px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+#hover-stats {
+  display: flex;
+  flex-direction: column;
   align-items: center;
 }
 
-h1 {
-  text-align: center;
-}
-
-#turn-number {
-  width: 220px;
+#viewport {
+  display: block;
+  padding-left: 0;
+  padding-right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid black;
 }
