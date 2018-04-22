@@ -15,8 +15,11 @@ const colors = {
   stunner:       '#82b1ff',
   bomb:          '#263238',
   towercooldown: '#00bcd4',
+  rangeoverlay:  'rgba(255, 59, 59, 0.3)',
+  rangeoutline:  '#ffc107',
+  lowlife:       '#c1180c',
 
-  text:          '#000000'
+  text:          '#000000',
 }
 
 const BASE_HP                            = 10;
@@ -94,7 +97,7 @@ class Game {
     this.towerSlots       = new Array(100);
     this.turnNumber       = 0;
 
-    this.invaderAI        = invaderAI || (game => ({action: 'spawn'}));
+    this.invaderAI        = invaderAI || (game => (game.invaderGold >= 10 ? {action: 'spawn', hp: game.invaderGold - 10} : null));
     this.invaderGold      = INVADER_INITIAL_GOLD;
     this.invaderIncome    = INVADER_INITIAL_INCOME;
     this.invaderBoostMax  = INVADER_INITIAL_MAXBOOST;
@@ -105,13 +108,49 @@ class Game {
 
     this.canvas = document.getElementById('viewport');
     this.canvasContext = this.canvas.getContext('2d');
+
     this.hudElements = {
       turnNumber:    document.getElementById('turn-number'),
       invaderGold:   document.getElementById('invader-gold'),
       invaderIncome: document.getElementById('invader-income'),
       defenderGold:  document.getElementById('defender-gold'),
       defenderLife:  document.getElementById('defender-life'),
+      hoverStats:    document.getElementById('hover-stats'),
     }
+    this.hudElements.hoverPlaceholder = this.hudElements.hoverStats.innerHTML;
+
+    this.selectedEntity = null;
+    this.selectedIndex = null;
+    this.selectedType = null;
+
+    let self = this;
+    this.canvas.addEventListener("mousemove", function(event) {
+      let x = event.clientX - self.canvas.offsetLeft;
+      let y = event.clientY - self.canvas.offsetTop;
+
+      let yCenter = self.canvas.height / 2;
+      let spaceSize = 12;
+      let leftEdge = 40;
+
+      let spaceIndex = (x - leftEdge) / spaceSize | 0;
+      if (spaceIndex >= 0 && spaceIndex < 100) {
+        if (y < yCenter && y >= yCenter - spaceSize) {
+          self.selectedIndex = spaceIndex;
+          self.selectedType = 'invader';
+        }
+        else if (y >= yCenter && y < yCenter + spaceSize) {
+          self.selectedIndex = spaceIndex;
+          self.selectedType = 'tower';
+        }
+        else {
+          self.selectedIndex = null;
+          self.selectedType = null;
+        }
+      }
+
+      self.updateHUD();
+      window.requestAnimationFrame(() => self.draw());
+    });
   }
 
   spawnInvader({hp, defense, stunRes, ..._}) {
@@ -123,7 +162,7 @@ class Game {
     if (
       !this.invaderSlots[0]
       && this.invaderGold >= cost
-      && totalBoost <= this.invaderBoostMax
+      //&& totalBoost <= this.invaderBoostMax
     ) {
       let invader = new Invader(BASE_HP + hp, defense, stunRes);
       this.invaderSlots[0] = invader;
@@ -172,6 +211,9 @@ class Game {
   }
 
   takeTurn() {
+
+    let defeatGold = 0;
+
     // Attack invaders
     for (let j = 99; j >= 0; j--) {
       let tower = this.towerSlots[j];
@@ -186,7 +228,7 @@ class Game {
             if (this.invaderSlots[i]) {
               if (this.invaderSlots[i].damage(tower.power)) {
                 this.invaderSlots[i] = null;
-                this.defenderGold += 1;
+                this.defenderGold += defeatGold;
               }
               break;
             }
@@ -207,7 +249,7 @@ class Game {
               if (this.invaderSlots[i]) {
                 if (this.invaderSlots[i].damage(tower.power)) {
                   this.invaderSlots[i] = null;
-                  this.defenderGold += 1;
+                  this.defenderGold += defeatGold;
                 }
                 tower.cooldown = BOMB_COOLDOWN;
               }
@@ -276,6 +318,8 @@ class Game {
           break;
       }
     }
+
+    this.updateHUD();
 
     return this.defenderLife > 0
   }
@@ -387,11 +431,57 @@ class Game {
       }
     }
 
+    if (this.selectedEntity instanceof Tower) {
+      let tower = this.selectedEntity;
+      let rangeLeftX = Math.max(tower.pos - tower.range, 0);
+      let rangeRightX = Math.min(tower.pos + tower.range + 1, 100);
+      ctx.fillStyle = colors.rangeoverlay;
+      ctx.strokeStyle = colors.rangeoutline;
+      ctx.fillRect(
+        leftEdge + rangeLeftX * spaceSize,
+        yCenter - spaceSize,
+        (rangeRightX - rangeLeftX) * spaceSize,
+        spaceSize,
+      )
+      ctx.strokeRect(
+        leftEdge + rangeLeftX * spaceSize,
+        yCenter - spaceSize,
+        (rangeRightX - rangeLeftX) * spaceSize,
+        spaceSize,
+      )
+    }
+  }
+
+  updateHUD() {
+    switch (this.selectedType) {
+      case 'invader':
+        this.selectedEntity = this.invaderSlots[this.selectedIndex];
+        break;
+      case 'tower':
+        this.selectedEntity = this.towerSlots[this.selectedIndex];
+        break;
+      default:
+        this.selectedEntity = null;
+        break;
+    }
+
+    if (this.selectedEntity) {
+      // TODO: make a table or something prettier and more intelligent
+      this.hudElements.hoverStats.innerText = JSON.stringify(this.selectedEntity);
+    }
+    else {
+      // TODO: make this not use innerHTML and cache DOM nodes or something...
+      this.hudElements.hoverStats.innerHTML = this.hudElements.hoverPlaceholder;
+    }
+
     this.hudElements.turnNumber.innerText    = this.turnNumber;
     this.hudElements.invaderGold.innerText   = this.invaderGold;
     this.hudElements.invaderIncome.innerText = this.invaderIncome;
     this.hudElements.defenderGold.innerText  = this.defenderGold;
     this.hudElements.defenderLife.innerText  = this.defenderLife;
+    if (this.defenderLife <= 3) {
+      this.hudElements.defenderLife.style.color = colors.lowlife;
+    }
   }
 
   run() {
