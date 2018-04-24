@@ -46,6 +46,7 @@ const BOMB_COOLDOWN         = 5;
 const DEFENDER_INITIAL_GOLD = 50;
 const DEFENDER_INITIAL_LIFE = 100;
 const VALID_TOWER_TYPES     = ['turret', 'stunner', 'bomb'];
+const TOWER_INDEX_TYPE      = [Turret, Stunner, Bomb];
 
 class Invader {
   constructor(hp, defense, stunRes) {
@@ -227,23 +228,12 @@ class Game {
   }
 
   buildTower({type, pos, ..._}) {
+    let towerType = TOWER_INDEX_TYPE[VALID_TOWER_TYPES.findIndex(typeString => typeString === type)];
     if (
       pos != null && pos >= 0 && pos < 100 && !this.towerSlots[pos]
-      && type && VALID_TOWER_TYPES.includes(type)
+      && towerType
       && this.defenderGold >= BUILD_COST
     ) {
-      let towerType = null;
-      switch (type) {
-        case 'turret':
-          towerType = Turret;
-          break;
-        case 'stunner':
-          towerType = Stunner;
-          break;
-        case 'bomb':
-          towerType = Bomb;
-          break;
-      }
       let tower = new towerType(type, pos);
       this.towerSlots[pos] = tower;
       this.defenderGold -= BUILD_COST;
