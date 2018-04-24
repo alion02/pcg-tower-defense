@@ -22,6 +22,11 @@ const colors = {
   text:          '#000000',
 }
 
+const INCOME_INTERVAL          = 10;
+const INCOME_INCREASE_INTERVAL = 100;
+const HP_MULT_INTERVAL         = 25000;
+const HOARD_PENALTY_INTERVAL   = 10;
+
 const BASE_HP                            = 10;
 const BASE_COST                          = 10;
 const DEF_COST                           = 10;
@@ -30,6 +35,7 @@ const INVADER_INITIAL_GOLD               = 0;
 const INVADER_INITIAL_INCOME             = 10;
 const INVADER_INITIAL_MAXBOOST           = 0;
 const INVADER_MAXBOOST_UPGRADE_INCREMENT = 3;
+const INVADER_HP_MULTIPLIER_GROWTH_RATE  = 1.1;
 
 const BUILD_COST            = 10;
 const BUILD_TIME            = 10;
@@ -37,7 +43,7 @@ const UPGRADE_COST          = 10;
 const UPGRADE_TIME          = 10;
 const BOMB_COOLDOWN         = 5;
 const DEFENDER_INITIAL_GOLD = 50;
-const DEFENDER_INITIAL_LIFE = 10;
+const DEFENDER_INITIAL_LIFE = 100;
 const VALID_TOWER_TYPES     = ['turret', 'bomb', 'stunner'];
 
 class Invader {
@@ -100,6 +106,8 @@ class Game {
     this.invaderGold      = INVADER_INITIAL_GOLD;
     this.invaderIncome    = INVADER_INITIAL_INCOME;
     this.invaderBoostMax  = INVADER_INITIAL_MAXBOOST;
+    this.invaderHPMultiplier = 1.0;
+    this.turnsSinceLastSpawn = 0;
 
     this.defenderAI       = defenderAI || (game => null);
     this.defenderGold     = DEFENDER_INITIAL_GOLD;
@@ -112,6 +120,8 @@ class Game {
       turnNumber:    document.getElementById('turn-number'),
       invaderGold:   document.getElementById('invader-gold'),
       invaderIncome: document.getElementById('invader-income'),
+      invaderBoost:  document.getElementById('invader-boost'),
+      invaderHPMult: document.getElementById('invader-mult'),
       defenderGold:  document.getElementById('defender-gold'),
       defenderLife:  document.getElementById('defender-life'),
       hoverStats:    document.getElementById('hover-stats'),
@@ -163,7 +173,8 @@ class Game {
       && this.invaderGold >= cost
       && totalBoost <= this.invaderBoostMax
     ) {
-      let invader = new Invader(BASE_HP + hp, defense, stunRes);
+      let spawnHP = (BASE_HP + hp) * this.invaderHPMultiplier | 0;
+      let invader = new Invader(spawnHP, defense, stunRes);
       this.invaderSlots[0] = invader;
       this.invaderGold -= cost;
       return invader;
@@ -265,21 +276,39 @@ class Game {
       }
     }
 
+    this.turnsSinceLastSpawn++;
+    if (this.turnsSinceLastSpawn % HOARD_PENALTY_INTERVAL == 0) {
+      let basePenalty = this.turnsSinceLastSpawn / HOARD_PENALTY_INTERVAL - 1 | 0;
+      if (basePenalty > 0) {
+        let penaltyMultiplier = Math.max(Math.sqrt(this.invaderIncome - BASE_COST), 1);
+        console.log(`Invader is hoarding gold. Penalizing: ${basePenalty} * ${penaltyMultiplier}`);
+        this.invaderGold -= basePenalty * penaltyMultiplier | 0;
+        if (this.invaderGold < 0) {
+          this.invaderGold = 0;
+        }
+      }
+    }
+
     this.turnNumber++;
-    if (this.turnNumber % 10 === 0) {
+    if (this.turnNumber % INCOME_INTERVAL == 0) {
       this.invaderGold += this.invaderIncome;
       this.defenderGold += 1;
     }
-    if (this.turnNumber % 100 == 0) {
+    if (this.turnNumber % INCOME_INCREASE_INTERVAL == 0) {
       this.invaderIncome += Math.log10(this.turnNumber) - 1 | 0;
       this.invaderBoostMax += Math.log10(this.turnNumber) | 0;
+    }
+    if (this.turnNumber % HP_MULT_INTERVAL == 0) {
+      this.invaderHPMultiplier *= INVADER_HP_MULTIPLIER_GROWTH_RATE;
     }
 
     let invaderAction  = this.invaderAI(this);
     let defenderAction = this.defenderAI(this);
 
     if (invaderAction) {
-      this.spawnInvader(invaderAction);
+      if (this.spawnInvader(invaderAction)) {
+        this.turnsSinceLastSpawn = 0;
+      }
     }
 
     if (defenderAction) {
@@ -456,6 +485,8 @@ class Game {
     this.hudElements.turnNumber.innerText    = this.turnNumber;
     this.hudElements.invaderGold.innerText   = this.invaderGold;
     this.hudElements.invaderIncome.innerText = this.invaderIncome;
+    this.hudElements.invaderBoost.innerText  = this.invaderBoostMax;
+    this.hudElements.invaderHPMult.innerText = this.invaderHPMultiplier;
     this.hudElements.defenderGold.innerText  = this.defenderGold;
     this.hudElements.defenderLife.innerText  = this.defenderLife;
     if (this.defenderLife <= 3) {
