@@ -29,6 +29,7 @@ const HOARD_PENALTY_INTERVAL   = 10;
 
 const BASE_HP                            = 10;
 const BASE_COST                          = 10;
+const HP_COST                            = 1;
 const DEF_COST                           = 10;
 const RES_COST                           = 10;
 const INVADER_INITIAL_GOLD               = 0;
@@ -44,7 +45,7 @@ const UPGRADE_TIME          = 10;
 const BOMB_COOLDOWN         = 5;
 const DEFENDER_INITIAL_GOLD = 50;
 const DEFENDER_INITIAL_LIFE = 100;
-const VALID_TOWER_TYPES     = ['turret', 'bomb', 'stunner'];
+const VALID_TOWER_TYPES     = ['turret', 'stunner', 'bomb'];
 
 class Invader {
   constructor(hp, defense, stunRes) {
@@ -67,21 +68,12 @@ class Invader {
 }
 
 class Tower {
-  constructor(type, pos) {
+  constructor(pos, range) {
     this.level    = 0;
     this.pos      = pos;
     this.power    = 1;
-    this.range    = 1;
+    this.range    = range;
     this.cooldown = BUILD_TIME;
-    this.type     = type;
-    switch (type) {
-      case 'bomb':
-        this.range = 2;
-        break;
-      case 'stunner':
-        this.range = 0;
-        break;
-    }
   }
 
   upgrade(stat) {
@@ -91,8 +83,27 @@ class Tower {
         this.level++;
         this[stat]++;
         this.cooldown = UPGRADE_TIME;
-      default:
     }
+  }
+  
+  appraise() {
+    return BUILD_COST + UPGRADE_COST * tower.level;
+  }
+}
+
+class Turret extends Tower {
+  constructor(pos) {
+    super(pos, 1);
+  }
+}
+class Stunner extends Tower {
+  constructor(pos) {
+    super(pos, 0);
+  }
+}
+class Bomb extends Tower {
+  constructor(pos) {
+    super(pos, 2);
   }
 }
 
@@ -166,7 +177,7 @@ class Game {
     hp = Math.max(hp || 0, 0);
     defense = Math.max(defense || 0, 0);
     stunRes = Math.max(stunRes || 0, 0);
-    let cost = BASE_COST + hp + defense * DEF_COST + stunRes * RES_COST;
+    let cost = BASE_COST + hp * HP_COST + defense * DEF_COST + stunRes * RES_COST;
     let totalBoost = hp + defense + stunRes;
     if (
       !this.invaderSlots[0]
@@ -187,7 +198,19 @@ class Game {
       && type && VALID_TOWER_TYPES.includes(type)
       && this.defenderGold >= BUILD_COST
     ) {
-      let tower = new Tower(type, pos);
+      let towerType = null;
+      switch (type) {
+        case 'turret':
+          towerType = Turret;
+          break;
+        case 'stunner':
+          towerType = Stunner;
+          break;
+        case 'bomb':
+          towerType = Bomb;
+          break;
+      }
+      let tower = new towerType(type, pos);
       this.towerSlots[pos] = tower;
       this.defenderGold -= BUILD_COST;
       return tower;
@@ -209,7 +232,7 @@ class Game {
     if (this.towerSlots[pos]) {
       let tower = this.towerSlots[pos];
       this.towerSlots[pos] = null;
-      this.defenderGold += (BUILD_COST + UPGRADE_COST * tower.level) / 2 | 0;
+      this.defenderGold += tower.appraise() / 2 | 0;
     }
   }
 
