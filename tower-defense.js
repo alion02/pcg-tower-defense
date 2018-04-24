@@ -95,15 +95,49 @@ class Turret extends Tower {
   constructor(pos) {
     super(pos, 1);
   }
+  
+  attack(invaderSlots) {
+    for (let i = tower.pos + tower.range; i >= tower.pos - tower.range; i--) {
+      if (invaderSlots[i]) {
+        if (invaderSlots[i].damage(tower.power)) {
+          invaderSlots[i] = null;
+        }
+        break;
+      }
+    }
+  }
 }
 class Stunner extends Tower {
   constructor(pos) {
     super(pos, 0);
   }
+  
+  attack(invaderSlots) {
+    for (let i = tower.pos + tower.range; i >= tower.pos - tower.range; i--) {
+      if (invaderSlots[i] && invaderSlots[i].stunTime === 0) {
+        invaderSlots[i].stun(tower.power);
+        tower.cooldown = tower.power + 1;
+        break;
+      }
+    }
+  }
 }
 class Bomb extends Tower {
   constructor(pos) {
     super(pos, 2);
+  }
+  
+  attack(invaderSlots) {
+    if (invaderSlots[tower.pos]) { // Only explodes if there is an invader immediately in front of it
+      for (let i = tower.pos - tower.range; i <= tower.pos + tower.range; i++) {
+        if (invaderSlots[i]) {
+          if (invaderSlots[i].damage(tower.power)) {
+            invaderSlots[i] = null;
+          }
+          tower.cooldown = BOMB_COOLDOWN;
+        }
+      }
+    }
   }
 }
 
@@ -245,39 +279,7 @@ class Game {
         tower.cooldown--;
         continue;
       }
-      switch (tower.type) {
-        case 'turret':
-          for (let i = tower.pos + tower.range; i >= tower.pos - tower.range; i--) {
-            if (this.invaderSlots[i]) {
-              if (this.invaderSlots[i].damage(tower.power)) {
-                this.invaderSlots[i] = null;
-              }
-              break;
-            }
-          }
-          break;
-        case 'stunner':
-          for (let i = tower.pos + tower.range; i >= tower.pos - tower.range; i--) {
-            if (this.invaderSlots[i] && this.invaderSlots[i].stunTime === 0) {
-              this.invaderSlots[i].stun(tower.power);
-              tower.cooldown = tower.power + 1;
-              break;
-            }
-          }
-          break;
-        case 'bomb':
-          if (this.invaderSlots[tower.pos]) { // Only explodes if there is an invader immediately in front of it
-            for (let i = tower.pos - tower.range; i <= tower.pos + tower.range; i++) {
-              if (this.invaderSlots[i]) {
-                if (this.invaderSlots[i].damage(tower.power)) {
-                  this.invaderSlots[i] = null;
-                }
-                tower.cooldown = BOMB_COOLDOWN;
-              }
-            }
-          }
-          break;
-      }
+      tower.attack(this.invaderSlots);
     }
     // Move invaders
     for (let i = 99; i >= 0; i--) {
