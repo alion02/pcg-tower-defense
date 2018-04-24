@@ -88,7 +88,7 @@ class Tower {
   }
   
   appraise() {
-    return BUILD_COST + UPGRADE_COST * tower.level;
+    return BUILD_COST + UPGRADE_COST * this.level;
   }
 }
 
